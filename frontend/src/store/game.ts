@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { BoardState, Move, GameRecord, AIConfig, GameStatus } from '../types';
+import { useChallengeStore } from './challenge';
 
 const BOARD_SIZE = 15;
 const EMPTY = 0;
@@ -233,6 +234,12 @@ export const useGameStore = defineStore('game', () => {
       winner.value = currentPlayer.value;
       status.value = 'finished';
       saveRecord();
+      try {
+        const challengeStore = useChallengeStore();
+        if (challengeStore.isChallengeActive) {
+          challengeStore.checkChallengeCompletion();
+        }
+      } catch (e) {}
       return true;
     }
 
@@ -240,10 +247,27 @@ export const useGameStore = defineStore('game', () => {
       winner.value = 0;
       status.value = 'finished';
       saveRecord();
+      try {
+        const challengeStore = useChallengeStore();
+        if (challengeStore.isChallengeActive) {
+          challengeStore.checkChallengeCompletion();
+        }
+      } catch (e) {}
       return true;
     }
 
     currentPlayer.value = currentPlayer.value === BLACK ? WHITE : BLACK;
+
+    try {
+      const challengeStore = useChallengeStore();
+      if (challengeStore.isChallengeActive && challengeStore.currentChallenge) {
+        const playerColor = challengeStore.currentChallenge.playerColor;
+        if (move.player === playerColor) {
+          challengeStore.recordMove();
+        }
+      }
+    } catch (e) {}
+
     return true;
   }
 

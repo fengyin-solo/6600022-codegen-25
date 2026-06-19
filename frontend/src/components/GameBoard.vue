@@ -13,8 +13,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useGameStore } from '../store/game';
+import { useChallengeStore } from '../store/challenge';
 
 const store = useGameStore();
+const challengeStore = useChallengeStore();
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const BOARD_SIZE = 15;
@@ -22,12 +24,21 @@ const CELL_SIZE = 40;
 const PADDING = 30;
 const canvasSize = CELL_SIZE * (BOARD_SIZE - 1) + PADDING * 2;
 
-const boardData = computed(() =>
-  store.status === 'replaying' ? store.replayBoard : store.board
-);
-const movesList = computed(() =>
-  store.status === 'replaying' ? store.replayMoves.slice(0, store.replayIndex) : store.moves
-);
+const isChallengeReplaying = computed(() => challengeStore.replayMoves.length > 0);
+
+const boardData = computed(() => {
+  if (isChallengeReplaying.value) {
+    return challengeStore.replayBoard;
+  }
+  return store.status === 'replaying' ? store.replayBoard : store.board;
+});
+
+const movesList = computed(() => {
+  if (isChallengeReplaying.value) {
+    return challengeStore.replayMoves.slice(0, challengeStore.replayIndex);
+  }
+  return store.status === 'replaying' ? store.replayMoves.slice(0, store.replayIndex) : store.moves;
+});
 
 function drawBoard(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = '#1a3a2a';
@@ -113,6 +124,7 @@ function render() {
 }
 
 function handleClick(e: MouseEvent) {
+  if (isChallengeReplaying.value) return;
   if (store.status !== 'playing') return;
   if (store.aiConfig.enabled && store.currentPlayer === store.aiConfig.playerColor) return;
 
@@ -135,5 +147,11 @@ function handleClick(e: MouseEvent) {
 }
 
 onMounted(() => render());
-watch([boardData, () => store.replayIndex, () => store.status], () => render());
+watch([
+  boardData,
+  () => store.replayIndex,
+  () => store.status,
+  () => challengeStore.replayIndex,
+  () => challengeStore.replayMoves.length
+], () => render());
 </script>
